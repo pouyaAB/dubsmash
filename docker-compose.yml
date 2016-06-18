@@ -1,0 +1,35 @@
+version: '2'
+services:
+  elasticsearch:
+    build: elasticsearch
+    networks:
+      - homework
+
+  cassandra:
+    build: cassandra
+    networks:
+      - homework
+
+  titan:
+    image: tspecht/titan-1.0-rest:1.0.2
+    command: ./bin/gremlin-server.sh
+    environment:
+      ELASTICSEARCH_HOST: "elasticsearch"
+    depends_on:
+      - cassandra
+      - elasticsearch
+    networks:
+      - homework
+
+  homework:
+    build: ./
+    ports:
+     - "5000:5000"
+    volumes:
+     - .:/code
+    depends_on:
+     - titan
+    networks:
+      - homework
+networks:
+  homework:
