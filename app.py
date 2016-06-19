@@ -14,7 +14,7 @@ def validate_json(json_obj):
 
 @app.route('/remove-all')
 def remove_all():
-    r = requests.post('http://172.22.0.4:8182',
+    r = requests.post('http://titan:8182',
             json = {"gremlin": "g.V().drop().iterate()"})
     if not validate_json(r.json()):
         return Response(json({'reason': r.json()['message']}), status=404, mimetype='application/json')
@@ -23,12 +23,11 @@ def remove_all():
 
 @app.route('/parse')
 def parse():
-    r = requests.post('http://172.22.0.4:8182',
+    r = requests.post('http://titan:8182',
             json = {"gremlin": "g.V().has('dub').inE('react')"})
     if not validate_json(r.json()):
         return Response(json.dumps({'reason': r.json()['message']}), status=404, mimetype='application/json')
     reacts = r.json()['result']['data']
-    #return r.text
     react_dict = {}
     react_max = {}
     react_list = []
@@ -57,7 +56,7 @@ def parse():
 @app.route('/add-dub/<dub_name>')
 def add_dub(dub_name):
     if dub_name:
-        r = requests.post('http://172.22.0.4:8182',
+        r = requests.post('http://titan:8182',
                 json = {"gremlin": "graph.addVertex('dub', '{}')".format(dub_name)})
         if not validate_json(r.json()):
             return Response({'reason': r.json()['message']}, status=404, mimetype='application/json')
@@ -71,7 +70,7 @@ def add_dub(dub_name):
 @app.route('/add-user/<user_name>')
 def add_user(user_name):
     if user_name:
-        r = requests.post('http://172.22.0.4:8182',
+        r = requests.post('http://titan:8182',
                 json = {"gremlin": "graph.addVertex('user', '{}')".format(user_name)})
         if not validate_json(r.json()):
             return Response({'reason': r.json()['message']}, status=404, mimetype='application/json')
@@ -86,14 +85,14 @@ def react():
     user_name = request.args.get('user_name')
     emoji_string = request.args.get('emoji_string')
     if user_name and dub_id and emoji_string:
-        check_in_db = requests.post('http://172.22.0.4:8182',
+        check_in_db = requests.post('http://titan:8182',
                 json = {"gremlin": "g.V('{}').inE('react').has('emoji', '{}')\
                         .outV().has('user', '{}').count()".format(dub_id, emoji_string, user_name)})
         if not validate_json(check_in_db.json()):
             return Response(json.dumps({'reason': check_in_db.json()['message']}), status=404, mimetype='application/json')
         if check_in_db.json()['result']['data'][0] == 0:
             timestamp = str(time.time())
-            r = requests.post('http://172.22.0.4:8182',
+            r = requests.post('http://titan:8182',
                     json = {"gremlin": "v1=g.V('{}').next(); v2=g.V().has('user', '{}').next();\
                         e1=v2.addEdge('react', v1, 'emoji', '{}', 'timestamp', '{}')"\
                         .format(dub_id, user_name, emoji_string, timestamp)})
@@ -111,7 +110,7 @@ def remove_react():
     user_name = request.args.get('user_name')
     emoji_string = request.args.get('emoji_string')
     if user_name and dub_id and emoji_string:
-        check_in_db = requests.post('http://172.22.0.4:8182',
+        check_in_db = requests.post('http://titan:8182',
                 json = {"gremlin": "g.V('{}').as('a').inE('react').has('emoji', '{}')\
                         .outV().has('user', '{}').outE().has('emoji', '{}').inV().\
                          where(eq('a')).inE('react').has('emoji', '{}').drop()".format(dub_id, emoji_string, user_name, emoji_string, emoji_string)})
@@ -124,7 +123,7 @@ def remove_react():
 
 @app.route('/all-dubs/')
 def list_all_dubs():
-    r = requests.post('http://172.22.0.4:8182',
+    r = requests.post('http://titan:8182',
             json = {"gremlin": "g.V()"})
     if not validate_json(r.json()):
         return Response(json.dumps({'reason': r.json()['message']}), status=404, mimetype='application/json')
@@ -142,7 +141,7 @@ def list_all_dubs():
 
 @app.route('/all-users/')
 def list_all_users():
-    r = requests.post('http://172.22.0.4:8182',
+    r = requests.post('http://titan:8182',
             json = {"gremlin": "g.V()"})
     if not validate_json(r.json()):
         return Response(json.dumps({'reason': r.json()['message']}), status=404, mimetype='application/json')
