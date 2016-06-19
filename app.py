@@ -7,19 +7,18 @@ app = Flask(__name__)
 def add_dub(dub_name):
     if dub_name:
         r = requests.post('http://172.22.0.4:8182',
-                json = {"gremlin": "graph.addvertex('dub', '{}')".format(dub_name)})
+                json = {"gremlin": "graph.addVertex('dub', '{}')".format(dub_name)})
         #return r.text
         r_json =  r.json()
         return str(r_json['result']['data'][0]['id'])
     else:
         return "404"
 
-@app.route('/add-dub/<dub_name>')
-def add_dub(dub_name):
-    if dub_name:
+@app.route('/add-user/<user_name>')
+def add_user(user_name):
+    if user_name:
         r = requests.post('http://172.22.0.4:8182',
-                json = {"gremlin": "graph.addvertex('dub', '{}')".format(dub_name)})
-        #return r.text
+                json = {"gremlin": "graph.addVertex('user', '{}')".format(user_name)})
         r_json =  r.json()
         return str(r_json['result']['data'][0]['id'])
     else:
