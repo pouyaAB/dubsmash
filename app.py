@@ -2,6 +2,8 @@ from flask import Flask
 from flask import request
 import time
 import requests
+from operator import itemgetter
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -11,10 +13,40 @@ def remove():
             json = {"gremlin": "g.V().drop().iterate()"})
     return r.text
 
+@app.route('/parse')
+def parse():
+    r = requests.post('http://172.22.0.4:8182',
+            json = {"gremlin": "g.V().has('dub').inE('react')"})
+    reacts = r.json()['result']['data']
+    #return r.text
+    react_dict = {}
+    react_max = {}
+    react_list = []
+    react_return_list = []
+    for react in reacts:
+        if react['inV'] in react_dict:
+            react_dict[react['inV']].append((react['properties']['emoji'], react['properties']['timestamp']))
+        else:
+             react_dict[react['inV']] = []
+             react_dict[react['inV']].append((react['properties']['emoji'], react['properties']['timestamp']))
+    for key, value in react_dict.iteritems():
+        react_max[key] = max(value, key=itemgetter(1))[1]
+    react_max = sorted(react_max.items(), key=itemgetter(1), reverse=True)
+    for react in react_max:
+        react_list.append((react[0], react_dict[react[0]]))
+    for react in react_list:
+        emoj_dict = defaultdict(int)
+        tuple_list = react[1]
+        for emoj in tuple_list:
+            emoj_dict[emoj[0]] += 1
+        react_return_list.append((react[0], emoj_dict))
+    return str(react_return_list)
+
+
 @app.route('/sort-dub')
 def sort_dub():
     r = requests.post('http://172.22.0.4:8182',
-            json = {"gremlin": "g.V().has('dub').inE('react').values('timestamp').max()"})
+            json = {"gremlin": "g.V().has('dub').inE('react').values('timestamp')"})
     return r.text
 
 @app.route('/add-dub/<dub_name>')
