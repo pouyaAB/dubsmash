@@ -1,4 +1,4 @@
-from flask import Flask, request, Response
+from flask import json, Flask, request, Response
 import time
 import requests
 from operator import itemgetter
@@ -12,21 +12,21 @@ def validate_json(json_obj):
     return True
 
 
-@app.route('/remove')
+@app.route('/remove-all')
 def remove_all():
     r = requests.post('http://172.22.0.4:8182',
             json = {"gremlin": "g.V().drop().iterate()"})
     if not validate_json(r.json()):
-        return Response({}, status=404, mimetype='application/json')
+        return Response(json({'reason': r.json()['message']}), status=404, mimetype='application/json')
 
-    return r.text
+    return Response(json.dumps({'result': r.text}), status=200, mimetype='application/json')
 
 @app.route('/parse')
 def parse():
     r = requests.post('http://172.22.0.4:8182',
             json = {"gremlin": "g.V().has('dub').inE('react')"})
     if not validate_json(r.json()):
-        return Response({}, status=404, mimetype='application/json')
+        return Response(json.dumps({'reason': r.json()['message']}), status=404, mimetype='application/json')
     reacts = r.json()['result']['data']
     #return r.text
     react_dict = {}
@@ -50,7 +50,8 @@ def parse():
         for emoj in tuple_list:
             emoj_dict[emoj[0]] += 1
         react_return_list.append((react[0], emoj_dict))
-    return str(react_return_list)
+
+    return Response(json.dumps({'result': str(react_return_list)}), status=200, mimetype='application/json')
 
 
 @app.route('/add-dub/<dub_name>')
@@ -59,14 +60,13 @@ def add_dub(dub_name):
         r = requests.post('http://172.22.0.4:8182',
                 json = {"gremlin": "graph.addVertex('dub', '{}')".format(dub_name)})
         if not validate_json(r.json()):
-            return Response({}, status=404, mimetype='application/json')
+            return Response({'reason': r.json()['message']}, status=404, mimetype='application/json')
         r_json =  r.json()
         if 'result' in r_json and 'data' in r_json['result'] and (len(r_json['result']['data']) == 1) and\
                 'id' in r_json['result']['data'][0]:
-            return str(r_json['result']['data'][0]['id'])
-        else:
-            return Response({}, status=400, mimetype='application/json')
-    return Response({}, status=404, mimetype='application/json')
+            return Response(json.dumps({'result': str(r_json['result']['data'][0]['id'])}),
+                    status=200, mimetype='application/json')
+    return Response(json.dumps({'reason': 'no dub name given'}), status=404, mimetype='application/json')
 
 @app.route('/add-user/<user_name>')
 def add_user(user_name):
@@ -74,10 +74,11 @@ def add_user(user_name):
         r = requests.post('http://172.22.0.4:8182',
                 json = {"gremlin": "graph.addVertex('user', '{}')".format(user_name)})
         if not validate_json(r.json()):
-            return Response({}, status=404, mimetype='application/json')
+            return Response({'reason': r.json()['message']}, status=404, mimetype='application/json')
         r_json =  r.json()
-        return str(r_json['result']['data'][0]['id'])
-    return Response({}, status=404, mimetype='application/json')
+        return Response(json.dumps({'result': str(r_json['result']['data'][0]['id'])}),
+                status=200, mimetype='application/json')
+    return Response(json.dumps({'reason': 'no user name given'}), status=404, mimetype='application/json')
 
 @app.route('/react', methods=['GET'])
 def react():
@@ -89,7 +90,7 @@ def react():
                 json = {"gremlin": "g.V('{}').inE('react').has('emoji', '{}')\
                         .outV().has('user', '{}').count()".format(dub_id, emoji_string, user_name)})
         if not validate_json(check_in_db.json()):
-            return Response({}, status=404, mimetype='application/json')
+            return Response(json.dumps({'reason': check_in_db.json()['message']}), status=404, mimetype='application/json')
         if check_in_db.json()['result']['data'][0] == 0:
             timestamp = str(time.time())
             r = requests.post('http://172.22.0.4:8182',
@@ -97,10 +98,12 @@ def react():
                         e1=v2.addEdge('react', v1, 'emoji', '{}', 'timestamp', '{}')"\
                         .format(dub_id, user_name, emoji_string, timestamp)})
             if not validate_json(r.json()):
-                return Response({}, status=404, mimetype='application/json')
-            return r.text
+                return Response(json.dumps({'reason': 'Invalid information'}),
+                        status=404, mimetype='application/json')
+            return Response(json.dumps({'result': r.text}),
+                    status=200, mimetype='application/json')
 
-    return Response({}, status=404, mimetype='application/json')
+    return Response(json.dumps({'reason': 'Invalid Information'}), status=404, mimetype='application/json')
 
 @app.route('/remove-react', methods=['GET'])
 def remove_react():
@@ -109,22 +112,24 @@ def remove_react():
     emoji_string = request.args.get('emoji_string')
     if user_name and dub_id and emoji_string:
         check_in_db = requests.post('http://172.22.0.4:8182',
-                json = {"gremlin": "g.V('{}').inE('react').has('emoji', '{}')\
-                        .outV().has('user', '{}').outE().has('emoji', '{}').drop()".format(dub_id, emoji_string, user_name, emoji_string)})
-        if not validate_json(check_in_db.json()):
-            return Response({}, status=404, mimetype='application/json')
+                json = {"gremlin": "g.V('{}').as('a').inE('react').has('emoji', '{}')\
+                        .outV().has('user', '{}').outE().has('emoji', '{}').inV().\
+                         where(eq('a')).inE('react').has('emoji', '{}').drop()".format(dub_id, emoji_string, user_name, emoji_string, emoji_string)})
         return check_in_db.text
-    return Response({}, status=404, mimetype='application/json')
+        if not validate_json(check_in_db.json()):
+            return Response(json.dumps({'reason': check_in_db.json()['message']}), status=404, mimetype='application/json')
+        return Response(json.dumps({'result': check_in_db.text}),
+                status=200, mimetype='application/json')
+        return Response(json.dumps({'reason': 'not enough parameters given'}), status=404, mimetype='application/json')
 
 @app.route('/all-dubs/')
 def list_all_dubs():
     r = requests.post('http://172.22.0.4:8182',
             json = {"gremlin": "g.V()"})
     if not validate_json(r.json()):
-        return Response({}, status=404, mimetype='application/json')
+        return Response(json.dumps({'reason': r.json()['message']}), status=404, mimetype='application/json')
     r_json =  r.json()
     dubs = {}
-    #return str(r.text)
     if 'result' in r_json and 'data' in r_json['result']:
         dubs_list = r_json['result']['data']
         for dub in dubs_list:
@@ -132,17 +137,17 @@ def list_all_dubs():
                 dubs_obj = dub['properties']
                 dubs[dub['id']] = dubs_obj['dub'][0]['value']
 
-    return str(dubs)
+    return Response(json.dumps({'result': str(dubs)}),
+            status=200, mimetype='application/json')
 
 @app.route('/all-users/')
 def list_all_users():
     r = requests.post('http://172.22.0.4:8182',
             json = {"gremlin": "g.V()"})
     if not validate_json(r.json()):
-        return Response({}, status=404, mimetype='application/json')
+        return Response(json.dumps({'reason': r.json()['message']}), status=404, mimetype='application/json')
     r_json =  r.json()
     users = {}
-    #return str(r.text)
     if 'result' in r_json and 'data' in r_json['result']:
         users_list = r_json['result']['data']
         for user in users_list:
@@ -150,7 +155,8 @@ def list_all_users():
                 user_obj = user['properties']
                 users[user['id']] = user_obj['user'][0]['value']
 
-    return str(users)
+    return Response(json.dumps({'result': str(users)}),
+            status=200, mimetype='application/json')
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
