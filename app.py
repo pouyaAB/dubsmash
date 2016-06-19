@@ -31,13 +31,13 @@ def react():
     user_name = request.args.get('user_name')
     emoji_string = request.args.get('emoji_string')
     if user_name and dub_id and emoji_string:
-        r = requests.post('http://172.22.0.4:8182',
-                json = {"gremlin": "g.V('{}').inE('react').has('emoji', '{}').count()".format(dub_id, emoji_string)})
-        return r.text
-        r = requests.post('http://172.22.0.4:8182',
-                json = {"gremlin": "v1=g.V('{}').next(); v2=g.V().has('user', '{}').next();\
-                    e1=v2.addEdge('react', v1, 'emoji', '{}')".format(dub_id, user_name, emoji_string)})
-        return r.text
+        check_in_db = requests.post('http://172.22.0.4:8182',
+                json = {"gremlin": "g.V('{}').inE('react').has('emoji', '{}').outV().has('user', '{}').count()".format(dub_id, emoji_string, user_name)})
+        if check_in_db.json()['result']['data'][0] == 0:
+            r = requests.post('http://172.22.0.4:8182',
+                    json = {"gremlin": "v1=g.V('{}').next(); v2=g.V().has('user', '{}').next();\
+                        e1=v2.addEdge('react', v1, 'emoji', '{}')".format(dub_id, user_name, emoji_string)})
+            return r.text
 
     return "404"
 
