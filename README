@@ -1,13 +1,12 @@
 # Dubsmash Challenge
 
 
-
 # Background
 DubTalk enables users to send funny Dubs to each other directly on Dubsmash. In order to show his or her feelings about a received Dub the user should be able to react to a Dub by posting emojis to it.
 
 
 # Challenge
-Your task is to write a micro-service in Python that offers a simple REST interface for mobile clients and stores the information inside a TitanDB graph.
+The challenge is to write a micro-service in Python that offers a simple REST interface for mobile clients and stores the information inside a TitanDB graph.
 
 The REST interface that should be exposed should support the following operations:
 
@@ -21,31 +20,5 @@ The REST interface that should be exposed should support the following operation
     If Dub A got the reactions 😀,😱,💩,😱 by random users in that order,
      the response returned by the API should be something like 😀:1, 😱:2, 💩:1
 
-You are free to choose whatever frameworks, platforms or tools you want to use as long as the code is written in Python.
-When you submit your Homework please make sure that you include instructions on how to easily run it.
 
 
-
-# Technical notes
-
-This repository contains a basic docker-compose setup to bootstrap a new container locally that is able to communicate with a Cassandra & Titan cluster.
-
-In order to use this please make sure to have the latest version of Docker and docker-compose installed and ready to use.
-
-The docker-compose file contains 4 containers:
-
-* titan: The titan instance running the graph.
-* elasticsearch: An elasticsearch used as the indexing backend for Titan.
-* cassandra: A one-node cassandra cluster providing the storage backend for Titan.
-* homework: The container you can do you magic in :) It's set up as a simple, plain ubuntu image and is linked into the `homework` network already. Just mount your code into this one and you should be all set.
-
-To find more information about docker and docker-compose please check out https://docs.docker.com/compose/
-
-Everything inside the `homework` container is able to access the Titan instance using the `titan` hostname on port 8182.
-
-`curl -H "Content-Type: application/json" -X POST -d '{"gremlin": "g.V()"}' titan:8182`
-
-To run the container simply do
-`docker-compose run homework <your_command>` or add it as the default command in the docker-compose file. All dependent containers are started automatically.
-
-Link to the Gremlin language documentation: http://tinkerpop.apache.org/docs/3.1.0-incubating/
